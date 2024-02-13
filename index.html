@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css"><link rel="stylesheet" href="css/L.Control.Locate.min.css">
+        <link rel="stylesheet" href="css/qgis2web.css"><link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet-control-geocoder.Geocoder.css">
+        <link rel="stylesheet" href="css/leaflet-measure.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+        }
+        </style>
+        <title></title>
+    </head>
+    <body>
+        <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script><script src="js/L.Control.Locate.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet-tilelayer-wmts.js"></script>
+        <script src="js/leaflet-control-geocoder.Geocoder.js"></script>
+        <script src="js/leaflet-measure.js"></script>
+        <script src="data/Bume_2.js"></script>
+        <script src="data/Kontrollen_3.js"></script>
+        <script>
+        var highlightLayer;
+        function highlightFeature(e) {
+            highlightLayer = e.target;
+
+            if (e.target.feature.geometry.type === 'LineString') {
+              highlightLayer.setStyle({
+                color: '#ffff00',
+              });
+            } else {
+              highlightLayer.setStyle({
+                fillColor: '#ffff00',
+                fillOpacity: 1
+              });
+            }
+            highlightLayer.openPopup();
+        }
+        var map = L.map('map', {
+            zoomControl:true, maxZoom:28, minZoom:1
+        }).fitBounds([[47.7773739421129,16.266727708000158],[47.783110754670886,16.27662912206822]]);
+        var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+        document.querySelector(".leaflet-popup-pane").addEventListener("load", function(event) {
+          var tagName = event.target.tagName,
+            popup = map._popup;
+          // Also check if flag is already set.
+          if (tagName === "IMG" && popup && !popup._updated) {
+            popup._updated = true; // Set flag to prevent looping.
+            popup.update();
+          }
+        }, true);
+        L.control.locate({locateOptions: {maxZoom: 19}}).addTo(map);
+        var measureControl = new L.Control.Measure({
+            position: 'topleft',
+            primaryLengthUnit: 'meters',
+            secondaryLengthUnit: 'kilometers',
+            primaryAreaUnit: 'sqmeters',
+            secondaryAreaUnit: 'hectares'
+        });
+        measureControl.addTo(map);
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0]
+        .innerHTML = '';
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0]
+        .className += ' fas fa-ruler';
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+        }
+        map.createPane('pane_OpenStreetMap_0');
+        map.getPane('pane_OpenStreetMap_0').style.zIndex = 400;
+        var layer_OpenStreetMap_0 = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            pane: 'pane_OpenStreetMap_0',
+            opacity: 0.7,
+            attribution: '',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 19
+        });
+        layer_OpenStreetMap_0;
+        map.addLayer(layer_OpenStreetMap_0);
+        map.createPane('pane_Hausnummern_1');
+        map.getPane('pane_Hausnummern_1').style.zIndex = 401;
+        var layer_Hausnummern_1 = L.tileLayer.wmts('https://www.basemap.at/wmts/1.0.0/WMTSCapabilities.xm', {
+            pane: 'pane_Hausnummern_1',
+            layer: 'bmapoverlay',
+            tilematrixSet: 'google3857',
+            format: 'image/png',
+            style: 'normal',
+            uppercase: true,
+            transparent: true,
+            continuousWorld : true,
+            opacity: 1.0,
+            attribution: '',
+        });
+        map.addLayer(layer_Hausnummern_1);
+        function pop_Bume_2(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (i in e.target._eventParents) {
+                        e.target._eventParents[i].resetStyle(e.target);
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Baumnummer</th>\
+                        <td>' + (feature.properties['BaumNr'] !== null ? autolinker.link(feature.properties['BaumNr'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">OBJECTID</th>\
+                        <td>' + (feature.properties['OBJECTID'] !== null ? autolinker.link(feature.properties['OBJECTID'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Ersterfassung</th>\
+                        <td>' + (feature.properties['Datum'] !== null ? autolinker.link(feature.properties['Datum'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Standort</th>\
+                        <td>' + (feature.properties['Standort'] !== null ? autolinker.link(feature.properties['Standort'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Baumart</th>\
+                        <td>' + (feature.properties['Baumart'] !== null ? autolinker.link(feature.properties['Baumart'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Baumhöhe (m)</th>\
+                        <td>' + (feature.properties['Baumhöhe_'] !== null ? autolinker.link(feature.properties['Baumhöhe_'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Stammdurchmesser (cm)</th>\
+                        <td>' + (feature.properties['Stamm_Ø_c'] !== null ? autolinker.link(feature.properties['Stamm_Ø_c'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Entwicklungsphase</th>\
+                        <td>' + (feature.properties['Entwicklun'] !== null ? autolinker.link(feature.properties['Entwicklun'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Vitalität</th>\
+                        <td>' + (feature.properties['Vitalität'] !== null ? autolinker.link(feature.properties['Vitalität'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Verkehrssicherheit gegeben</th>\
+                        <td>' + (feature.properties['Verkehrssi'] !== null ? autolinker.link(feature.properties['Verkehrssi'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">nächste Kontrolle</th>\
+                        <td>' + (feature.properties['nächste K'] !== null ? autolinker.link(feature.properties['nächste K'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Maßnahmen</th>\
+                        <td>' + (feature.properties['Maßnahmen'] !== null ? autolinker.link(feature.properties['Maßnahmen'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Kronen Breite (m)</th>\
+                        <td>' + (feature.properties['KronBreit'] !== null ? autolinker.link(feature.properties['KronBreit'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Bemerkung</th>\
+                        <td>' + (feature.properties['Bemerkung'] !== null ? autolinker.link(feature.properties['Bemerkung'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Baumhöhe (m)</th>\
+                        <td>' + (feature.properties['Baumhoehe'] !== null ? autolinker.link(feature.properties['Baumhoehe'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">alter</th>\
+                        <td>' + (feature.properties['alter'] !== null ? autolinker.link(feature.properties['alter'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">nächste Kontrolle</th>\
+                        <td>' + (feature.properties['naechsteKo'] !== null ? autolinker.link(feature.properties['naechsteKo'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Standort</th>\
+                        <td>' + (feature.properties['Foto_Stand'] !== null ? '<img src="images/' + String(feature.properties['Foto_Stand']).replace(/[\\\/:]/g, '_').trim() + '">' : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Stamm</th>\
+                        <td>' + (feature.properties['Foto_Stamm'] !== null ? '<img src="images/' + String(feature.properties['Foto_Stamm']).replace(/[\\\/:]/g, '_').trim() + '">' : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Schaden</th>\
+                        <td>' + (feature.properties['Foto_Schad'] !== null ? '<img src="images/' + String(feature.properties['Foto_Schad']).replace(/[\\\/:]/g, '_').trim() + '">' : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">gefaellt</th>\
+                        <td>' + (feature.properties['gefaellt'] !== null ? autolinker.link(feature.properties['gefaellt'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            layer.bindPopup(popupContent, {maxHeight: 400});
+            var popup = layer.getPopup();
+            var content = popup.getContent();
+            var updatedContent = removeEmptyRowsFromPopupContent(content, feature);
+            popup.setContent(updatedContent);
+        }
+
+        function style_Bume_2_0(feature) {
+            switch(String(feature.properties['Vitalität'])) {
+                case '0-ohne Schadensmerkmale':
+                    return {
+                pane: 'pane_Bume_2',
+                radius: 5.6,
+                stroke: false,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(133,182,111,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '1-leicht geschwächt':
+                    return {
+                pane: 'pane_Bume_2',
+                radius: 5.6,
+                stroke: false,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(190,207,80,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '2-geschädigt, krank':
+                    return {
+                pane: 'pane_Bume_2',
+                radius: 5.6,
+                stroke: false,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(213,180,60,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '3-stark geschädigt, sehr krank':
+                    return {
+                pane: 'pane_Bume_2',
+                radius: 5.6,
+                stroke: false,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(125,139,143,1.0)',
+                interactive: true,
+            }
+                    break;
+                case '4-abgestorben':
+                    return {
+                pane: 'pane_Bume_2',
+                radius: 5.6,
+                stroke: false,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(145,82,45,1.0)',
+                interactive: true,
+            }
+                    break;
+            }
+        }
+        map.createPane('pane_Bume_2');
+        map.getPane('pane_Bume_2').style.zIndex = 402;
+        map.getPane('pane_Bume_2').style['mix-blend-mode'] = 'normal';
+        var layer_Bume_2 = new L.geoJson(json_Bume_2, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Bume_2',
+            layerName: 'layer_Bume_2',
+            pane: 'pane_Bume_2',
+            onEachFeature: pop_Bume_2,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_Bume_2_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_Bume_2);
+        map.addLayer(layer_Bume_2);
+        function pop_Kontrollen_3(feature, layer) {
+            layer.on({
+                mouseout: function(e) {
+                    for (i in e.target._eventParents) {
+                        e.target._eventParents[i].resetStyle(e.target);
+                    }
+                    if (typeof layer.closePopup == 'function') {
+                        layer.closePopup();
+                    } else {
+                        layer.eachLayer(function(feature){
+                            feature.closePopup()
+                        });
+                    }
+                },
+                mouseover: highlightFeature,
+            });
+            var popupContent = '<table>\
+                    <tr>\
+                        <th scope="row">Baumnummer</th>\
+                        <td>' + (feature.properties['BaumNr'] !== null ? autolinker.link(feature.properties['BaumNr'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">OBJECTID</th>\
+                        <td>' + (feature.properties['OBJECTID'] !== null ? autolinker.link(feature.properties['OBJECTID'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Ersterfassung</th>\
+                        <td>' + (feature.properties['Datum'] !== null ? autolinker.link(feature.properties['Datum'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Standort</th>\
+                        <td>' + (feature.properties['Standort'] !== null ? autolinker.link(feature.properties['Standort'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Baumart</th>\
+                        <td>' + (feature.properties['Baumart'] !== null ? autolinker.link(feature.properties['Baumart'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Baumhöhe (m)</th>\
+                        <td>' + (feature.properties['Baumhöhe_'] !== null ? autolinker.link(feature.properties['Baumhöhe_'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Stammdurchmesser (cm)</th>\
+                        <td>' + (feature.properties['Stamm_Ø_c'] !== null ? autolinker.link(feature.properties['Stamm_Ø_c'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Entwicklungsphase</th>\
+                        <td>' + (feature.properties['Entwicklun'] !== null ? autolinker.link(feature.properties['Entwicklun'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Vitalität</th>\
+                        <td>' + (feature.properties['Vitalität'] !== null ? autolinker.link(feature.properties['Vitalität'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Verkehrssicherheit gegeben</th>\
+                        <td>' + (feature.properties['Verkehrssi'] !== null ? autolinker.link(feature.properties['Verkehrssi'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">nächste Kontrolle</th>\
+                        <td>' + (feature.properties['nächste K'] !== null ? autolinker.link(feature.properties['nächste K'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Maßnahmen</th>\
+                        <td>' + (feature.properties['Maßnahmen'] !== null ? autolinker.link(feature.properties['Maßnahmen'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Kronenbreite (m)</th>\
+                        <td>' + (feature.properties['KronBreit'] !== null ? autolinker.link(feature.properties['KronBreit'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Bemerkung</th>\
+                        <td>' + (feature.properties['Bemerkung'] !== null ? autolinker.link(feature.properties['Bemerkung'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Baumhöhe (m)</th>\
+                        <td>' + (feature.properties['Baumhoehe'] !== null ? autolinker.link(feature.properties['Baumhoehe'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">alter</th>\
+                        <td>' + (feature.properties['alter'] !== null ? autolinker.link(feature.properties['alter'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">naechsteKo</th>\
+                        <td>' + (feature.properties['naechsteKo'] !== null ? autolinker.link(feature.properties['naechsteKo'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Foto Standort</th>\
+                        <td>' + (feature.properties['Foto_Stand'] !== null ? '<img src="images/' + String(feature.properties['Foto_Stand']).replace(/[\\\/:]/g, '_').trim() + '">' : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Foto Stamm</th>\
+                        <td>' + (feature.properties['Foto_Stamm'] !== null ? '<img src="images/' + String(feature.properties['Foto_Stamm']).replace(/[\\\/:]/g, '_').trim() + '">' : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Foto_Schad</th>\
+                        <td>' + (feature.properties['Foto_Schad'] !== null ? autolinker.link(feature.properties['Foto_Schad'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">gefaellt</th>\
+                        <td>' + (feature.properties['gefaellt'] !== null ? autolinker.link(feature.properties['gefaellt'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            layer.bindPopup(popupContent, {maxHeight: 400});
+            var popup = layer.getPopup();
+            var content = popup.getContent();
+            var updatedContent = removeEmptyRowsFromPopupContent(content, feature);
+            popup.setContent(updatedContent);
+        }
+        function style_Kontrollen_3_0(feature) {
+            var context = {
+                feature: feature,
+                variables: {}
+            };
+            // Start of if blocks and style check logic
+            if (exp_Kontrollen_3rule0_eval_expression(context)) {
+                  return {
+                pane: 'pane_Kontrollen_3',
+                radius: 8.0,
+                opacity: 1,
+                color: 'rgba(253,16,12,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 4.0,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(196,60,57,0.0)',
+                interactive: true,
+            };
+                }
+                else if (exp_Kontrollen_3rule1_eval_expression(context)) {
+                  return {
+                pane: 'pane_Kontrollen_3',
+                radius: 8.0,
+                opacity: 1,
+                color: 'rgba(255,158,23,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 4.0,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(255,158,23,0.0)',
+                interactive: true,
+            };
+                }
+            else {
+                return {fill: false, stroke: false};
+            }
+        }
+        map.createPane('pane_Kontrollen_3');
+        map.getPane('pane_Kontrollen_3').style.zIndex = 403;
+        map.getPane('pane_Kontrollen_3').style['mix-blend-mode'] = 'normal';
+        var layer_Kontrollen_3 = new L.geoJson(json_Kontrollen_3, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Kontrollen_3',
+            layerName: 'layer_Kontrollen_3',
+            pane: 'pane_Kontrollen_3',
+            onEachFeature: pop_Kontrollen_3,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_Kontrollen_3_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_Kontrollen_3);
+        map.addLayer(layer_Kontrollen_3);
+        var osmGeocoder = new L.Control.Geocoder({
+            collapsed: true,
+            position: 'topleft',
+            text: 'Search',
+            title: 'Testing'
+        }).addTo(map);
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .className += ' fa fa-search';
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .title += 'Search for a place';
+        var baseMaps = {};
+        L.control.layers(baseMaps,{'Kontrollen<br /><table><tr><td style="text-align: center;"><img src="legend/Kontrollen_3_innerhalb30Tagen0.png" /></td><td>innerhalb 30 Tagen</td></tr><tr><td style="text-align: center;"><img src="legend/Kontrollen_3_innerhalb6Monaten1.png" /></td><td>innerhalb 6 Monaten</td></tr></table>': layer_Kontrollen_3,'Bäume<br /><table><tr><td style="text-align: center;"><img src="legend/Bume_2_0ohneSchadensmerkmale0.png" /></td><td>0-ohne Schadensmerkmale</td></tr><tr><td style="text-align: center;"><img src="legend/Bume_2_1leichtgeschwächt1.png" /></td><td>1-leicht geschwächt</td></tr><tr><td style="text-align: center;"><img src="legend/Bume_2_2geschädigtkrank2.png" /></td><td>2-geschädigt, krank</td></tr><tr><td style="text-align: center;"><img src="legend/Bume_2_3starkgeschädigtsehrkrank3.png" /></td><td>3-stark geschädigt, sehr krank</td></tr><tr><td style="text-align: center;"><img src="legend/Bume_2_4abgestorben4.png" /></td><td>4-abgestorben</td></tr></table>': layer_Bume_2,"Hausnummern": layer_Hausnummern_1,"OpenStreetMap": layer_OpenStreetMap_0,}).addTo(map);
+        setBounds();
+        </script>
+    </body>
+</html>
